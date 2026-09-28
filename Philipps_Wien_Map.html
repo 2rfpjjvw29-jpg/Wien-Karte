@@ -1,0 +1,53 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Philipps Wien Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{display:grid;grid-template-columns:350px 1fr;height:100vh;background:#f5f6f7}
+.side{background:white;border-right:1px solid #ddd;display:flex;flex-direction:column}
+.head{padding:18px;border-bottom:1px solid #ddd}h1{margin:0;font-size:21px}.sub{font-size:12px;color:#69727d;margin-top:4px}
+.controls{padding:12px;border-bottom:1px solid #ddd}input{width:100%;padding:10px;border:1px solid #d4d8dc;border-radius:9px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}button{padding:7px 9px;border:1px solid #d4d8dc;background:white;border-radius:20px;font-size:11px}button.active{background:#222;color:white}
+.count{font-size:11px;color:#69727d;margin-top:8px}.list{overflow:auto;padding:8px}
+.item{background:white;border:1px solid #e2e5e8;border-radius:9px;padding:9px;margin-bottom:6px;cursor:pointer}
+.name{font-weight:650;font-size:13px}.addr{font-size:11px;color:#69727d;margin-top:3px}.tag{font-size:9px;color:#59616a;margin-top:5px;display:inline-block}
+#map{height:100%;min-height:500px}.badge{position:absolute;z-index:1000;top:12px;left:12px;background:white;padding:8px 11px;border-radius:9px;box-shadow:0 2px 10px #0002;font-size:11px}
+@media(max-width:800px){.app{grid-template-columns:1fr;grid-template-rows:48vh 52vh}#map{min-height:48vh}.side{order:2;border-right:0;border-top:1px solid #ddd}}
+</style></head><body><div class="app">
+<aside class="side"><div class="head"><h1>Philipps Wien Map</h1><div class="sub">Restaurants · Gyms · Supplemente · Sehenswürdigkeiten</div></div>
+<div class="controls"><input id="q" placeholder="Ort oder Adresse suchen …"><div class="filters">
+<button class="active" data-f="Alle">Alle</button><button data-f="Restaurant">Restaurants</button>
+<button data-f="Gym & Supplement">Gyms & Supplemente</button><button data-f="Sehenswürdigkeit">Sehenswürdigkeiten</button>
+<button data-f="U-Bahn">Nur U-Bahn</button></div>
+<div id="count" class="count"></div></div><div id="list" class="list"></div></aside>
+<main style="position:relative"><div class="badge">Wiener Stadtkarte · Straßen · Zoom & Pan</div><div id="map"></div></main></div>
+<script>
+const places=[{"cat": "Restaurant", "name": "Bashly WU", "address": "Welthandelsplatz 1, 1020 Wien"}, {"cat": "Restaurant", "name": "Lima 56 Peru", "address": "Favoritenstraße 56, 1040 Wien"}, {"cat": "Restaurant", "name": "Spaghetteria 2.0", "address": "Vorgartenstraße 204, 1020 Wien"}, {"cat": "Restaurant", "name": "Mats Würstelstand", "address": "Franzensbrückenstraße 2f, 1020 Wien"}, {"cat": "Restaurant", "name": "Baumkuchen Prater", "address": "Prater 84, 1020 Wien"}, {"cat": "Restaurant", "name": "Schweizerhaus", "address": "Prater 116, 1020 Wien"}, {"cat": "Restaurant", "name": "Taverne Kreta", "address": "Wattgasse 71, 1170 Wien"}, {"cat": "Restaurant", "name": "Kolarik Bio", "address": "Prater 128, 1020 Wien"}, {"cat": "Restaurant", "name": "Joseph Brot", "address": "Fügerichgasse 6, 1010 Wien"}, {"cat": "Restaurant", "name": "Prindl", "address": "Jägerstraße 2, 1200 Wien"}, {"cat": "Restaurant", "name": "Tichy Eis", "address": "Reumannplatz 13, 1100 Wien"}, {"cat": "Restaurant", "name": "Zanoni & Zanoni", "address": "Am Lugeck 7, 1010 Wien"}, {"cat": "Restaurant", "name": "Otto will Mehr", "address": "Obere Donaustraße 26, 1020 Wien"}, {"cat": "Restaurant", "name": "Naschmarkt", "address": "Rechte Wienzeile 35, 1040 Wien"}, {"cat": "Restaurant", "name": "Café Sperl", "address": "Gumpendorfer Straße 11, 1060 Wien"}, {"cat": "Restaurant", "name": "Café Schwarzenberg", "address": "Kärntnerring 17, 1010 Wien"}, {"cat": "Restaurant", "name": "XO Burger", "address": "Riemergasse 1, 1010 Wien"}, {"cat": "Restaurant", "name": "Trzesniewski", "address": "Dorotheergasse 1, 1010 Wien"}, {"cat": "Restaurant", "name": "Neni", "address": "Perspektivstraße 8, 1020 Wien"}, {"cat": "Restaurant", "name": "Cucina Itameshi", "address": "Praterstraße 70, 1020 Wien"}, {"cat": "Restaurant", "name": "Woa", "address": "Graben 29a, 1010 Wien"}, {"cat": "Restaurant", "name": "Brasserie Palmenhaus", "address": "Josephsplatz 1, 1010 Wien"}, {"cat": "Restaurant", "name": "Das Loft", "address": "Prater 1, 1020 Wien"}, {"cat": "Restaurant", "name": "Fleischerei Hödl", "address": "Breitenfurter Straße 294a, 1230 Wien"}, {"cat": "Restaurant", "name": "Summer Restaurant Irakisch", "address": "Davidgasse 17, 1100 Wien"}, {"cat": "Restaurant", "name": "Al Shami", "address": "Brunnenmarkt, 1160 Wien"}, {"cat": "Restaurant", "name": "Alice römische Pizza", "address": "Donauzentrum, 1220 Wien"}, {"cat": "Gym & Supplement", "name": "John Reed", "address": "Schottengasse 6-8, 1010 Wien"}, {"cat": "Gym & Supplement", "name": "Fitness First", "address": "Schnirchgasse 13, 1030 Wien"}, {"cat": "Gym & Supplement", "name": "Dasgym", "address": "Handelskai 340, 1020 Wien"}, {"cat": "Gym & Supplement", "name": "Topbody G", "address": "Drei-Platz 1, 2201 Gerasdorf"}, {"cat": "Gym & Supplement", "name": "Sportnahrung 4 Friends", "address": "Lassallestraße 30, 1020 Wien"}, {"cat": "Gym & Supplement", "name": "Prominomax", "address": "Mariahilfer Straße 88a, 1070 Wien"}, {"cat": "Gym & Supplement", "name": "Biotech", "address": "Landstraßer Hauptstraße 1B, 1030 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Motel One Wien-Prater", "address": "Ausstellungsstraße 40, 1020 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Flaktürme & Augarten", "address": "Obere Augartenstraße 1, 1020 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Haus des Meeres", "address": "Fritz-Grünbaum-Platz 1, 1060 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Palais Ferstel", "address": "Strauchgasse 4, 1010 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Votivkirche", "address": "Rooseveltplatz, 1090 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Oberlaa Park / Kurpark Oberlaa", "address": "Laaer-Berg-Straße, 1100 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Heeresgeschichtliches Museum", "address": "Arsenal 1, 1030 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Paternoster Aufzug", "address": "Felderstraße 1, 1010 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Palais Equitable", "address": "Stock-im-Eisen-Platz 3, 1010 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Justizpalast", "address": "Schmerlingplatz 10-11, 1010 Wien"}, {"cat": "Sehenswürdigkeit", "name": "Palais Kinsky", "address": "Freyung 4, 1010 Wien"}];let filter="Alle",markers=[];
+const map=L.map('map').setView([48.2082,16.3738],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const layer=L.layerGroup().addTo(map);
+const colors={"Restaurant":"#d1495b","Gym & Supplement":"#2f6690","Sehenswürdigkeit":"#4f772d"};
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function draw(){
+ layer.clearLayers();markers=[];const q=document.getElementById('q').value.toLowerCase().trim();
+ const shown=places.filter(p=>(filter!=="U-Bahn"&&(filter==="Alle"||p.cat===filter))&&(!q||(p.name+" "+p.address).toLowerCase().includes(q)));
+ document.getElementById('count').textContent=filter==="U-Bahn"
+   ? ubahnStations.length+" U-Bahn-Stationen"
+   : shown.length+" von "+places.length+" Standorten";
+ubahnLayer.clearLayers();
+if(filter==="Alle"||filter==="U-Bahn") drawUbahn();
+ document.getElementById('list').innerHTML=shown.map((p,i)=>`<div class="item" data-i="${places.indexOf(p)}"><div class="name">${esc(p.name)}</div><div class="addr">${esc(p.address)}</div><div class="tag">${esc(p.cat)}</div></div>`).join('');
+ shown.forEach(p=>{
+   fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=at&q='+encodeURIComponent(p.address))
+   .then(r=>r.json()).then(x=>{if(!x.length)return;const m=L.circleMarker([+x[0].lat,+x[0].lon],{radius:7,weight:2,fillOpacity:.9,color:colors[p.cat]}).addTo(layer);
+   m.bindPopup('<b>'+esc(p.name)+'</b><br>'+esc(p.address)+'<br><small>'+esc(p.cat)+'</small>');markers.push({p,m});});
+ });
+ document.querySelectorAll('.item').forEach(el=>el.onclick=()=>{
+   const p=places[+el.dataset.i];const found=markers.find(x=>x.p===p);if(found){map.setView(found.m.getLatLng(),17);found.m.openPopup()}
+ });
+}
+document.querySelectorAll('button').forEach(b=>b.onclick=()=>{document.querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.f;draw()});
+document.getElementById('q').oninput=draw;draw();
+</script></body></html>
